@@ -129,3 +129,36 @@ El modelo incluye una serie de pruebas unitarias para validar su comportamiento 
 * **Proveedor mayorista:** El modelo debe considerar el pedido mínimo y optar por un proveedor más caro si el pedido mínimo del mayorista es demasiado grande.  
 * **Capacidad de almacenamiento cero:** El modelo debe comprar exactamente la demanda para cada período si no puede almacenar inventario.  
 * **Escenario de liquidación:** El modelo no debe realizar compras si el stock inicial es suficiente para cubrir toda la demanda.
+
+---------
+
+# **Documentación Técnica del Algoritmo Voraz (Greedy Backward)**
+
+## **1\. Introducción**
+
+El algoritmo implementado es una heurística de tipo "greedy" o voraz, diseñada para encontrar una solución rápida y eficiente al problema de optimización de la cadena de suministro, que considera costos de compra, almacenamiento y costos fijos por pedido. A diferencia de un modelo de optimización exacto como el de Gurobi, que garantiza el óptimo global, este enfoque se centra en tomar decisiones localmente óptimas en cada paso, lo que resulta en un tiempo de ejecución significativamente menor. El objetivo es obtener una solución de alta calidad en un período de tiempo razonable.
+
+## **2\. Lógica del Algoritmo (Backward Greedy)**
+
+La estrategia principal del algoritmo es un enfoque de "atrás hacia adelante" o "pull". En lugar de planificar las compras desde el presente, el algoritmo mira hacia el futuro y determina qué debe comprarse para satisfacer la demanda de cada período, priorizando las decisiones que generan el menor costo unitario en el momento de la elección.
+
+El flujo de trabajo se estructura de la siguiente manera:
+
+1. **Iteración por Período Inversa:** El algoritmo comienza por el último período (T) y avanza hacia el primer período (t=0). Esto permite que el plan de compras se "arrastre" hacia atrás desde la demanda, asegurando que el stock esté disponible en el momento en que se necesita.  
+2. **Priorización de la Demanda:** Dentro de cada período, los productos se ordenan por su demanda. La heurística prioriza la satisfacción de la demanda de los productos más necesarios primero.  
+3. **Selección del Mejor Candidato (\_find\_best\_candidate):** Para cada unidad de demanda de un producto, el algoritmo busca la opción de compra que minimice un **costo unitario proyectado**. Este costo unitario se calcula con una función de costo que incluye los siguientes componentes:  
+   * **Costo de Compra:** El costo base del producto por unidad al proveedor y en el período de compra.  
+   * **Costo de Almacenamiento:** Se calcula como el costo de almacenamiento por unidad multiplicado por el número de períodos que la unidad estará en el inventario. CostoAlmacenamientoTotal \= CostoAlmacenamiento \* (t\_demanda \- t\_compra).  
+   * **Costo Fijo por Pedido:** Este costo se aplica una sola vez por proveedor y por período de compra. El algoritmo lo incorpora en el cálculo del costo unitario solo si no se ha realizado ninguna otra compra a ese proveedor en ese período. La condición para esto es que la suma de todas las compras a dicho proveedor en el período sea cero.  
+4. **Asignación de la Compra:** Una vez que se identifica el mejor candidato (proveedor, período y cantidad de compra), la compra se asigna, se actualiza la capacidad restante del proveedor y se reduce la demanda pendiente. Este proceso continúa hasta que toda la demanda del producto en el período actual esté satisfecha.  
+5. **Cálculo Final del Costo y el Stock:** Una vez que todas las decisiones de compra han sido tomadas, el algoritmo realiza una segunda pasada, esta vez en orden cronológico (t=0 a T), para calcular con precisión los niveles de stock finales y el costo total real de la solución, sumando todos los costos de compra, almacenamiento y costos fijos.
+
+## **3\. Consideraciones y Limitaciones**
+
+El enfoque voraz, aunque rápido, es inherentemente miope. Su principal limitación es que las decisiones tomadas en un período para minimizar el costo local pueden no ser las más beneficiosas para la solución general a largo plazo. Por ejemplo, una compra "barata" en un período temprano podría ocupar la capacidad del almacén, impidiendo compras aún más rentables más adelante. Sin embargo, como se ha demostrado, este algoritmo ofrece un excelente equilibrio entre velocidad y calidad de la solución, acercándose significativamente al óptimo.
+
+## **4\. Estructura de la Solución**
+
+El resultado del algoritmo se encapsula en una clase Solution que almacena el plan de compras, los niveles de stock y el costo total. Esta clase también realiza una serie de validaciones automáticas para asegurar que la solución respeta todas las restricciones del modelo, como la capacidad del almacén y los límites de los pedidos.
+
+
