@@ -30,8 +30,8 @@ El modelo utiliza los siguientes datos de entrada para encontrar la solución ó
 * C\_i,j,t: Costo de compra por unidad del producto i al proveedor j en el período t.  
 * H\_i: Costo de almacenamiento por unidad del producto i por período.  
 * S\_cap\_i,j,t: Capacidad de suministro del proveedor j para el producto i en el período t.  
-* min\_p\_i,j,t: Cantidad mínima de pedido del producto i al proveedor j en el período t.  
-* F\_i,j,t: Costo fijo por realizar un pedido del producto i al proveedor j en el período t.  
+* min\_p\_i,j: Cantidad mínima de pedido del producto i al proveedor j.  
+* F\_j: Costo fijo por realizar un pedido al proveedor j.  
 * V\_i: Volumen por unidad del producto i.  
 * C\_cap: Capacidad total de almacenamiento del almacén.
 
@@ -39,9 +39,15 @@ El modelo utiliza los siguientes datos de entrada para encontrar la solución ó
 
 Las variables del modelo son las que se ajustan para encontrar la solución óptima:
 
-* p\_i,j,t: Cantidad de producto i a comprar al proveedor j en el período t (variable continua).  
-* s\_i,t: Cantidad de stock del producto i al final del período t (variable continua).  
+* p\_i,j,t: Cantidad de producto i a comprar al proveedor j en el período t (variable continua). 
+
+Variables redundantes:
 * y\_i,j,t: Variable binaria que indica si se realiza un pedido (1) o no (0) para el producto i al proveedor j en el período t.
+   * Utilizada como "truco" expresar el pedido mínimo y costo fijo como equaciones.
+   * Introducida en el solver linea-cuadrático como variable independiente, aunque realmente no lo sea.
+* s\_i,t: Cantidad de stock del producto i al final del período t (variable continua).
+   * Podemos prescindir de ella en el solver, ya que podemos utilizar una expresión lineal de las compras en su lugar.
+   * Se puede usar como variable independiente en el solver, introduciendo solo KxP variables, frente a las KxMxP de compras, y haciendo las equaciones menos densas, pero optamos por no hacerlo.
 
 ### **4\. Formulación Matemática**
 
@@ -51,9 +57,7 @@ El objetivo es minimizar el costo total, que se compone de tres elementos:
 
 1. **Costo de Compra:** ∑\_i,j,tC\_i,j,t⋅p\_i,j,t  
 2. **Costo de Almacenamiento:** ∑\_i,tH\_i⋅s\_i,t  
-3. **Costo Fijo de Pedido:** ∑\_i,j,tF\_i,j,t⋅y\_i,j,t
-
-Minimizar: (∑\_i,j,tC\_i,j,t⋅p\_i,j,t)+(∑\_i,tH\_i⋅s\_i,t)+(∑\_i,j,tF\_i,j,t⋅y\_i,j,t)
+3. **Costo Fijo de Pedido:** ∑\_i,j,tF\_j⋅y\_i,j,t
 
 #### **Restricciones**
 
@@ -62,14 +66,15 @@ Las siguientes restricciones aseguran que la solución sea factible:
 1. Balance de Inventario: El stock final de un período es igual al stock inicial más las compras, menos la demanda.  
    S\_i,t=S\_i,t−1+∑\_jp\_i,j,t−D\_i,tquadforalli,t0  
    Para el primer período (t=0):  
-   S\_i,0+∑\_jp\_i,j,0−D\_i,0=S\_i,0  
-2. Capacidad del Proveedor: La cantidad comprada no puede exceder la capacidad de suministro del proveedor.  
+   S\_i,0+∑\_jp\_i,j,0−D\_i,0=S\_i,0
+   Esta restricción se convierte en una simple expresion dentro del coste.
+3. Capacidad del Proveedor: La cantidad comprada no puede exceder la capacidad de suministro del proveedor.  
    p\_i,j,t≤S\_cap\_i,j,tquadforalli,j,t  
-3. Pedido Mínimo: Si se realiza un pedido (y=1), la cantidad comprada debe ser al menos la cantidad mínima de pedido.  
+4. Pedido Mínimo: Si se realiza un pedido (y=1), la cantidad comprada debe ser al menos la cantidad mínima de pedido.  
    p\_i,j,t≥min\_p\_i,j,t⋅y\_i,j,tquadforalli,j,t  
-4. Vinculación del Pedido: Esta restricción asegura que si no se realiza un pedido (y=0), la cantidad comprada sea cero.  
+5. Vinculación del Pedido: Esta restricción asegura que si no se realiza un pedido (y=0), la cantidad comprada sea cero.  
    p\_i,j,t≤S\_cap\_i,j,t⋅y\_i,j,tquadforalli,j,t  
-5. Capacidad del Almacén: El volumen total del stock al final de cada período no puede exceder la capacidad máxima del almacén.  
+6. Capacidad del Almacén: El volumen total del stock al final de cada período no puede exceder la capacidad máxima del almacén.  
    ∑\_is\_i,t⋅V\_i≤C\_capquadforallt
 
 ## **6\. Estructura del Código y Clases**
@@ -107,7 +112,7 @@ Para ejecutar el modelo de optimización, sigue estos pasos:
    (Nota: Reemplaza your\_module con el nombre de tu archivo si no está en el mismo script.)  
 2. **Define los parámetros del problema:** Puedes usar la función de generación de datos simulados o pasar tus propios datos.  
    \# Ejemplo de datos simulados  
-   params \= ProblemParameters.create\_example\_parameters(  
+   params \= ProblemParameters.simulate\_data(  
        num\_products=3, num\_providers=2, num\_periods=4  
    )
 
